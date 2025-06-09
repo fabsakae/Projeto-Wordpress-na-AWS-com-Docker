@@ -16,7 +16,6 @@ O objetivo principal é realizar o deploy de uma aplicação WordPress utilizand
 * **Elastic File System (EFS)**: Armazenamento de arquivos compartilhado e escalável para os arquivos do WordPress (plugins, temas, uploads de mídia), garantindo persistência e consistência dos dados entre as instâncias.
 * **Amazon RDS (Relational Database Service)**: Banco de dados gerenciado para o MySQL do WordPress, garantindo alta disponibilidade e backups automatizados.
 * **Security Groups**: Controlam o tráfego de rede para garantir que apenas o tráfego autorizado possa acessar os recursos.
-* **IAM Roles**: Perfis de IAM com permissões para as instâncias EC2 interagirem com outros serviços AWS (como EFS).
 
 
 ## 3. Passos da Implementação
