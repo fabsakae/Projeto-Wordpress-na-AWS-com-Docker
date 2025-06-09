@@ -1,4 +1,4 @@
-# 1. Implantação de Blog WordPress Altamente Disponível na AWS
+# 1. Implantação de Blog WordPress Disponível na AWS
 
 Este repositório contém a documentação para a implantação de um blog WordPress com alta disponibilidade e escalabilidade na Amazon Web Services (AWS), utilizando serviços como VPC, EC2, Auto Scaling Group (ASG), Elastic Load Balancing (ELB), Elastic File System (EFS) e Amazon RDS.
 
@@ -28,10 +28,10 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Nome: `projeto-wordpress-vpc`
     * Bloco CIDR IPv4: `10.0.0.0/16`
 2.  **Criação das Sub-redes Públicas:**
-    * Duas sub-redes, uma em cada Zona de Disponibilidade (AZ), por exemplo, `us-east-1a` e `us-east-1b`.
+    * Duas sub-redes, uma em cada Zona de Disponibilidade (AZ), projeto-wordpress-subnet-public, `us-east-1a` e `us-east-1b`.
     * Exemplos de CIDR: `10.0.16.0/20` (us-east-1a), `10.0.32.0/20` (us-east-1b).
 3.  **Criação das Sub-redes Privadas:**
-    * Duas sub-redes, uma em cada AZ, por exemplo, `us-east-1a` e `us-east-1b`.
+    * Duas sub-redes, uma em cada AZ, projeto-wordpress-subnet-private, `us-east-1a` e `us-east-1b`.
     * Exemplos de CIDR: `10.0.0.0/20` (us-east-1a), `10.0.0.0/20` (us-east-1b).
 4.  **Internet Gateway (IGW)**: Criar e anexar à `projeto-wordpress-vpc`.
 5.  **Tabelas de Rotas**:
@@ -44,14 +44,14 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 1.  **`wordpress-ec2-sg` (para instâncias EC2):**
     * Inbound:
         * HTTP (Porta 80) e HTTPS (Porta 443) do Load Balancer Security Group.
-        * SSH (Porta 22) do seu IP (ou `0.0.0.0/0` para testes, mas não recomendado para produção).
+        * SSH (Porta 22) do seu IP (ou `0.0.0.0/0` para testes, não recomendado para produção).
         * Tráfego NFS (Porta 2049) do EFS Security Group.
     * Outbound: Todo tráfego (ou restrito ao RDS e EFS).
 2.  **`wordpress-rds-sg` (para RDS):**
     * Inbound: MySQL/Aurora (Porta 3306) do `wordpress-ec2-sg`.
 3.  **`wordpress-efs-sg` (para EFS):**
     * Inbound: NFS (Porta 2049) do `wordpress-ec2-sg`.
-4.  **`wordpress-alb-sg` (para ELB):**
+4.  **`wordpress-alb-sg` (para ALB):**
     * Inbound: HTTP (Porta 80) e HTTPS (Porta 443) de `0.0.0.0/0` (acesso público).
     * Outbound: HTTP (Porta 80) e HTTPS (Porta 443) para o `wordpress-ec2-sg`.
 
