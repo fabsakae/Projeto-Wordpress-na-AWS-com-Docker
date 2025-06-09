@@ -64,7 +64,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 ### 3.4. Configuração do Banco de Dados (RDS)
 
 1.  **Criação do Grupo de Sub-redes do RDS**: Selecionar as sub-redes privadas criadas.
-2.  **Criação da Instância de Banco de Dados RDS**:
+2.  **Criação de Banco de Dados RDS:**
     * Nome: `wordpress-db`
     * Motor: MySQL.
     * Nível Gratuito (para testes).
@@ -75,20 +75,106 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 
 ### 3.5. Configuração do Sistema de Arquivos (EFS)
 
-1.  **Criação do EFS**:
+1.  **Criação do EFS:**
     * Nome: `wordpress-efs`.
     * VPC: `projeto-wordpress-vpc`.
     * Configurar pontos de acesso para as sub-redes públicas, com o `wordpress-efs-sg` anexado.
 
-### 3.6. Configuração do Load Balancer (ALB)
+### 3.6. Configuração de uma instância usando um script User (EC2)
+1.   **Criação da instância EC2:**
+     * Nome: `wordpress-instance-01`.
+     * Tags obrigatórias:*
+        * `Name`: `PB - AB...`
+        * `CostCenter`: `CO92000...`
+        * `Project`: `PB - AB...`
+     * Imagens de aplicações e SO: Amazon Linux 2023 - AMI.
+     * Tipo de instância: t2.micro.
+     * Configurações de rede:
+       * VPC: `projeto-wordpress-vpc`.
+       * Sub-rede: `projeto-wordpress-public-subnet-use1a`.
+       * Grupos de segurança: `wordpress-ec2-sg`
+     * User data:
+     ```bash
+     #!/bin/bash
+      yum update -y
+      sudo dnf install -y docker
+      service docker start
+      usermod -a -G docker ec2-user
+      chkconfig docker on
+      curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+      chmod +x /usr/local/bin/docker-compose
+      ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      yum install -y nfs-utils
+      mkdir -p /mnt/efs
+      # Montagem do EFS
+      mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs
+      # Adicionar EFS ao fstab para montagem persistente
+      echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+     ```
+### 3.7. Conectar via SSH à Instância EC2
+1.   Conecte-se via SSH no  terminal Ubuntu (WSL):
+     ```Bash 
+      ssh -i wordpress-key-pair.pem ec2-user@<IP_PUBLICO_DA_EC2>
+     ``` 
+     ** Meu par de chaves (wordpress-key-pair.pem) está no meu diretório pessoal (~/).
+       
+     * Verificar se o Docker está rodando:
+     ```bash
+     systemctl status docker
+     ```
+     *Verificar se o ec2-user está no grupo docker:
+     ```bash
+     groups ec2-user
+     ```
+     * Verificar se o Docker Compose está instalado:
+     ```bash
+     docker-compose version
+     ```
+     * Verificar se o EFS está montado:
+     ```bash
+     df -h | grep /mnt/efs
+     ```
+3. Criar o arquivo docker-compose.yml para o WordPress:
+     Crie um diretório para o projeto WordPress no diretório ec2-user:
+     ```bash
+     mkdir ~/wordpress-app
+     cd ~/wordpress-app
+     ```
+     * Criar o arquivo docker-compose.yml:
+     ```bash
+     vi docker-compose.yml
+     ```
+     ```
+     version: '3.8' 
+ 
+     services: 
+        wordpress: 
+          image: wordpress:latest 
+          ports: 
+            - "80:80" 
+          environment: 
+            WORDPRESS_DB_HOST: wordpress-db.c4jm0qu26yff.us-east-1.rds.amazonaws.com > 
+            WORDPRESS_DB_USER: adminword 
+            WORDPRESS_DB_PASSWORD: fel... 
+            WORDPRESS_DB_NAME: wordpress_db 
+          volumes: 
+            - /mnt/efs:/var/www/html 
 
-1. **Criação do Grupo de Destino (Target Group)**:
+          restart: always
+    ```
+    * Execute o Docker Compose:
+    ```
+    sudo docker-compose up –d
+    ```
+### 3.8. Configuração do Load Balancer (ALB)
+
+1. **Criação do Grupo de Destino (Target Group):**
     * Tipo: `Instâncias`.
     * Nome: `wordpress-target-group`.
     * Protocolo/Porta: `HTTP/80`.
     * VPC: `projeto-wordpress-vpc`.
     * Tags: Fornecidas pela Compass.
-2. **Criação do Application Load Balancer (ALB)**:
+2. **Criação do Application Load Balancer (ALB):**
     * Tipo: `Application Load Balancer`.
     * Nome: `wordpress-alb`.
     * VPC: `projeto-wordpress-vpc`.
@@ -98,14 +184,14 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 3.  **Criação de Listener no ELB**:
     * Protocolo/Porta: `HTTP/80`.
     * Ação: Encaminhar para o `wordpress-target-group`.
-4.  **Anotar o DNS Name do ELB**.
+4.  **Anotar o DNS Name do ALB**.
 
 ### 3.7. Configuração do Launch Template
 
 1.  **Criação do Launch Template:**
     * Nome: `wordpress-lt`.
     * Versão: `1`.
-    * AMI: Amazon Linux 2023 (ou outra AMI compatível com Docker).
+    * AMI: Amazon Linux 2023.
     * Tipo de instância: `t2.micro`.
     * Par de chaves: `wordpress-key-pair`.
     * Security Groups: `wordpress-ec2-sg`.
@@ -152,8 +238,10 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
         * `Name`: `PB - AB...`
         * `CostCenter`: `CO9...`
         * `Project`: `PB - AB...`
-
-
+          
+### 3.9. Testar o Acesso ao WordPress via Load Balancer
+   * Com DNS name do seu Load Balancer (Exemplo: http://wordpress-alb-1234567890.us-east-1.elb.amazonaws.com).
+   * digite na barra do novegador.
 ## 5. Limpeza de Recursos (Teardown)
 
 Para evitar custos desnecessários, é crucial excluir todos os recursos da AWS na ordem inversa da criação:
