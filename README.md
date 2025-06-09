@@ -25,41 +25,42 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 
 ### 3.1. Configuração de Rede (VPC)
 
-1.  **Criação da VPC**:
+1.  **Criação da VPC:**
     * Nome: `projeto-wordpress-vpc`
     * Bloco CIDR IPv4: `10.0.0.0/16`
-2.  **Criação das Sub-redes Públicas**:
+2.  **Criação das Sub-redes Públicas:**
     * Duas sub-redes, uma em cada Zona de Disponibilidade (AZ), por exemplo, `us-east-1a` e `us-east-1b`.
     * Exemplos de CIDR: `10.0.16.0/20` (us-east-1a), `10.0.32.0/20` (us-east-1b).
-3.  **Criação das Sub-redes Privadas**:
+3.  **Criação das Sub-redes Privadas:**
     * Duas sub-redes, uma em cada AZ, por exemplo, `us-east-1a` e `us-east-1b`.
     * Exemplos de CIDR: `10.0.0.0/20` (us-east-1a), `10.0.0.0/20` (us-east-1b).
 4.  **Internet Gateway (IGW)**: Criar e anexar à `projeto-wordpress-vpc`.
 5.  **Tabelas de Rotas**:
-    * **Tabela de Rotas Pública**: Associada às sub-redes públicas, com uma rota padrão (`0.0.0.0/0`) apontando para o IGW.
-    * **Tabela de Rotas Privada**: Associada às sub-redes privadas.
-6.  **Rotas nos Private Subnets**: Adicionar uma rota padrão (`0.0.0.0/0`) nas tabelas de rotas privadas apontando para o NAT Gateway correspondente em cada AZ.
+    * **Tabela de Rotas Pública:** Associada às sub-redes públicas, com uma rota padrão (`0.0.0.0/0`) apontando para o IGW.
+    * **Tabela de Rotas Privada:** Associada às sub-redes privadas.
+6.  **Rotas nos Private Subnets:** Adicionar uma rota padrão (`0.0.0.0/0`) nas tabelas de rotas privadas apontando para o NAT Gateway correspondente em cada AZ.
 
 ### 3.2. Configuração de Segurança (Security Groups)
 
-1.  **`wordpress-ec2-sg` (para instâncias EC2)**:
+1.  **`wordpress-ec2-sg` (para instâncias EC2):**
     * Inbound:
         * HTTP (Porta 80) e HTTPS (Porta 443) do Load Balancer Security Group.
         * SSH (Porta 22) do seu IP (ou `0.0.0.0/0` para testes, mas não recomendado para produção).
         * Tráfego NFS (Porta 2049) do EFS Security Group.
     * Outbound: Todo tráfego (ou restrito ao RDS e EFS).
-2.  **`wordpress-rds-sg` (para RDS)**:
+2.  **`wordpress-rds-sg` (para RDS):**
     * Inbound: MySQL/Aurora (Porta 3306) do `wordpress-ec2-sg`.
-3.  **`wordpress-efs-sg` (para EFS)**:
+3.  **`wordpress-efs-sg` (para EFS):**
     * Inbound: NFS (Porta 2049) do `wordpress-ec2-sg`.
-4.  **`wordpress-alb-sg` (para ELB)**:
+4.  **`wordpress-alb-sg` (para ELB):**
     * Inbound: HTTP (Porta 80) e HTTPS (Porta 443) de `0.0.0.0/0` (acesso público).
     * Outbound: HTTP (Porta 80) e HTTPS (Porta 443) para o `wordpress-ec2-sg`.
 
 ### 3.3. Criar o key Pair (para acessar as instâncias EC2 via SSH).
 
-1.   **`wordpress-key-pair` (tipo: RSA)
-2.   * Formato do arquivo: `.pem`
+1.  **`wordpress-key-pair` .
+2.  * Tipo: RSA.
+3.  * Formato do arquivo: `.pem`.
 
 ### 3.4. Configuração do Banco de Dados (RDS)
 
@@ -143,15 +144,15 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * VPC: `projeto-wordpress-vpc`.
     * Zonas de Disponibilidade e Sub-redes: Selecionar as **sub-redes públicas**.
     * Anexar a um balanceador de carga existente: `wordpress-target-group`.
-    * Verificações de integridade: Tipo `ELB`.
+    * Verificações de integridade: Tipo `ALB`.
     * Capacidade desejada: `2`.
     * Capacidade mínima: `2`.
     * Capacidade máxima: `4`.
-    * Políticas de escalabilidade: Nenhuma (por enquanto).
+    * Políticas de escalabilidade: Nenhuma.
     * **Tags obrigatórias**:
-        * `Name`: `PB - ABR 2025`
-        * `CostCenter`: `CO92000024`
-        * `Project`: `PB - ABR 2025`
+        * `Name`: `PB - AB...`
+        * `CostCenter`: `CO9...`
+        * `Project`: `PB - AB...`
 
 
 ## 5. Limpeza de Recursos (Teardown)
