@@ -216,10 +216,10 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
    ```
       
     
-   **Tags obrigatórias:**
-        * `Name`: `PB - AB...`
-        * `CostCenter`: `CO92000...`
-        * `Project`: `PB - AB...`
+   * Tags obrigatórias:*
+      * `Name`: `PB - AB...`
+      * `CostCenter`: `CO92000...`
+      * `Project`: `PB - AB...`
 
 ### 3.8. Configuração do Auto Scaling Group (ASG)
 
@@ -244,7 +244,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
    * digite na barra do novegador.
 ## 5. Limpeza de Recursos (Teardown)
 
-Para evitar custos desnecessários, é crucial excluir todos os recursos da AWS na ordem inversa da criação:
+Para evitar custos desnecessários, excluir todos os recursos da AWS na ordem inversa da criação:
 
 1.  Excluir o **Grupo de Auto Scaling (ASG)**: `wordpress-asg`
 2.  Excluir o **Modelo de Execução (Launch Template)**: `wordpress-lt`
