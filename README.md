@@ -102,7 +102,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 
 ### 3.7. Configuração do Launch Template
 
-1.  **Criação do Launch Template**:
+1.  **Criação do Launch Template:**
     * Nome: `wordpress-lt`.
     * Versão: `1`.
     * AMI: Amazon Linux 2023 (ou outra AMI compatível com Docker).
@@ -110,34 +110,34 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Par de chaves: `wordpress-key-pair`.
     * Security Groups: `wordpress-ec2-sg`.
     * **User Data**: Script para instalar Docker, montar EFS, configurar e rodar o WordPress em contêineres.
-    **Conteúdo do script:
- ´´´
-      #!/bin/bash 
-yum update -y 
-sudo dnf install -y docker 
-service docker start 
-usermod -a -G docker ec2-user 
-chkconfig docker on 
-curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose 
-chmod +x /usr/local/bin/docker-compose 
-ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
-yum install -y nfs-utils 
-mkdir -p /mnt/efs 
-# Montagem do EFS 
-mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs 
-# Adicionar EFS ao fstab para montagem persistente 
-echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
-´´´
+    **Conteúdo do script:**
+   ```bash
+   #!/bin/bash 
+   yum update -y 
+   sudo dnf install -y docker 
+   service docker start 
+   usermod -a -G docker ec2-user 
+   chkconfig docker on 
+   curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose 
+   chmod +x /usr/local/bin/docker-compose 
+   ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
+   yum install -y nfs-utils 
+   mkdir -p /mnt/efs 
+   # Montagem do EFS 
+   mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs 
+   # Adicionar EFS ao fstab para montagem persistente 
+   echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+   ```
       
     
-    * **Tags obrigatórias**:
+   **Tags obrigatórias:**
         * `Name`: `PB - AB...`
         * `CostCenter`: `CO92000...`
         * `Project`: `PB - AB...`
 
 ### 3.8. Configuração do Auto Scaling Group (ASG)
 
-1.  **Criação do Auto Scaling Group**:
+1.  **Criação do Auto Scaling Group:**
     * Nome: `wordpress-asg`.
     * Modelo de Execução: `wordpress-lt` (selecionar a versão mais recente).
     * VPC: `projeto-wordpress-vpc`.
