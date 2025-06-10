@@ -35,11 +35,23 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Exemplos de CIDR: `10.0.0.0/20` (us-east-1a), `10.0.0.0/20` (us-east-1b).
 4.  **Internet Gateway (IGW)**: Criar e anexar à `projeto-wordpress-vpc`.
 5.  **Tabelas de Rotas**:
-    * **Tabela de Rotas Pública:** Associada às sub-redes públicas, com uma rota padrão (`0.0.0.0/0`) apontando para o IGW.
+    * **Tabela de Rotas Pública:** Associada às sub-redes públicas, com uma rota padrão (`0.0.0.0/0`) .
     * **Tabela de Rotas Privada:** Associada às sub-redes privadas.
-6.  **Rotas nos Private Subnets:** Adicionar uma rota padrão (`0.0.0.0/0`) nas tabelas de rotas privadas apontando para o NAT Gateway correspondente em cada AZ.
+6.  **Rotas nos Private Subnets:** Adicionar uma rota padrão (`0.0.0.0/0`).
 
-### 3.2. Configuração de Segurança (Security Groups)
+### 3.2. Criar grupo de sub-redes do DB" (Create DB subnet group). 
+
+**Detalhes do grupo de sub-redes do DB:**  
+
+   1. * Nome: `wordpress-db-subnet-group-us-east-1`.
+   2. * Descrição: `Grupo de sub-redes para o banco de dados WordPress na VPC do projeto em us-east-1`. 
+   3. *Adicionar zonas de disponibilidade e sub-redes:**
+         * Zona de disponibilidade: `us-east-1a`. 
+         * Sub-redes: Selecione a sub-rede privada `projeto-wordpress-private-subnet-use1a` . 
+         * Zona de disponibilidade: `us-east-1b`. 
+         * Sub-redes: Selecione a sub-rede privada `projeto-wordpress-private-subnet-use1b`.
+
+### 3.3. Configuração de Segurança (Security Groups)
 
 1.  **`wordpress-ec2-sg` (para instâncias EC2):**
     * Inbound:
@@ -55,13 +67,13 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Inbound: HTTP (Porta 80) e HTTPS (Porta 443) de `0.0.0.0/0` (acesso público).
     * Outbound: HTTP (Porta 80) e HTTPS (Porta 443) para o `wordpress-ec2-sg`.
 
-### 3.3. Criar o key Pair (para acessar as instâncias EC2 via SSH).
+### 3.4. Criar o key Pair (para acessar as instâncias EC2 via SSH).
 
 1.  **`wordpress-key-pair` .
 2.  * Tipo: RSA.
 3.  * Formato do arquivo: `.pem`.
 
-### 3.4. Configuração do Banco de Dados (RDS)
+### 3.5. Configuração do Banco de Dados (RDS)
 
 1.  **Criação do Grupo de Sub-redes do RDS**: Selecionar as sub-redes privadas criadas.
 2.  **Criação de Banco de Dados RDS:**
@@ -73,14 +85,14 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Conectividade: Associar ao Grupo de Sub-redes do RDS.
     * Classes de instância de banco de dados: db.t3.micro
 
-### 3.5. Configuração do Sistema de Arquivos (EFS)
+### 3.6. Configuração do Sistema de Arquivos (EFS)
 
 1.  **Criação do EFS:**
     * Nome: `wordpress-efs`.
     * VPC: `projeto-wordpress-vpc`.
     * Configurar pontos de acesso para as sub-redes públicas, com o `wordpress-efs-sg` anexado.
 
-### 3.6. Configuração de uma instância usando um script User (EC2)
+### 3.7. Configuração de uma instância usando um script User (EC2)
 1.   **Criação da instância EC2:**
      * Nome: `wordpress-instance-01`.
      * Tags obrigatórias:*
@@ -111,7 +123,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
       # Adicionar EFS ao fstab para montagem persistente
       echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
      ```
-### 3.7. Conectar via SSH à Instância EC2
+### 3.8. Conectar via SSH à Instância EC2
 1.   Conecte-se via SSH no  terminal Ubuntu (WSL):
      ```Bash 
       ssh -i wordpress-key-pair.pem ec2-user@<IP_PUBLICO_DA_EC2>
@@ -134,7 +146,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
      ```bash
      df -h | grep /mnt/efs
      ```
-3. Criar o arquivo docker-compose.yml para o WordPress:
+2. Criar o arquivo docker-compose.yml para o WordPress:
      Crie um diretório para o projeto WordPress no diretório ec2-user:
      ```bash
      mkdir ~/wordpress-app
@@ -166,7 +178,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     ```
     sudo docker-compose up –d
     ```
-### 3.8. Configuração do Load Balancer (ALB)
+### 3.9. Configuração do Load Balancer (ALB)
 
 1. **Criação do Grupo de Destino (Target Group):**
     * Tipo: `Instâncias`.
@@ -186,7 +198,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Ação: Encaminhar para o `wordpress-target-group`.
 4.  **Anotar o DNS Name do ALB**.
 
-### 3.7. Configuração do Launch Template
+### 3.10. Configuração do Launch Template
 
 1.  **Criação do Launch Template:**
     * Nome: `wordpress-lt`.
@@ -221,7 +233,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
       * `CostCenter`: `CO92000...`
       * `Project`: `PB - AB...`
 
-### 3.8. Configuração do Auto Scaling Group (ASG)
+### 3.11. Configuração do Auto Scaling Group (ASG)
 
 1.  **Criação do Auto Scaling Group:**
     * Nome: `wordpress-asg`.
@@ -239,10 +251,11 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
         * `CostCenter`: `CO9...`
         * `Project`: `PB - AB...`
           
-### 3.9. Testar o Acesso ao WordPress via Load Balancer
+### 3.12. Testar o Acesso ao WordPress via Load Balancer
    * Com DNS name do seu Load Balancer (Exemplo: http://wordpress-alb-1234567890.us-east-1.elb.amazonaws.com).
    * digite na barra do novegador.
-## 5. Limpeza de Recursos (Teardown)
+
+## 4. Limpeza de Recursos (Teardown)
 
 Para evitar custos desnecessários, excluir todos os recursos da AWS na ordem inversa da criação:
 
