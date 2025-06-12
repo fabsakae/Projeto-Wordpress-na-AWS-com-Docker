@@ -29,10 +29,10 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Bloco CIDR IPv4: `10.0.0.0/16`
 2.  **Criação das Sub-redes Públicas:**
     * Duas sub-redes, uma em cada Zona de Disponibilidade (AZ), projeto-wordpress-subnet-public, `us-east-1a` e `us-east-1b`.
-    * Exemplos de CIDR: `10.0.16.0/20` (us-east-1a), `10.0.32.0/20` (us-east-1b).
+    * CIDR: `10.0.0.0/20` (us-east-1a), `10.0.16.0/20` (us-east-1b).
 3.  **Criação das Sub-redes Privadas:**
     * Duas sub-redes, uma em cada AZ, projeto-wordpress-subnet-private, `us-east-1a` e `us-east-1b`.
-    * Exemplos de CIDR: `10.0.0.0/20` (us-east-1a), `10.0.0.0/20` (us-east-1b).
+    * CIDR: `10.0.128.0/20` (us-east-1a), `10.0.144.0/20` (us-east-1b).
 4.  **Internet Gateway (IGW)**: Criar e anexar à `projeto-wordpress-vpc`.
 5.  **Tabelas de Rotas**:
     * **Tabela de Rotas Pública:** Associada às sub-redes públicas, com uma rota padrão (`0.0.0.0/0`) .
