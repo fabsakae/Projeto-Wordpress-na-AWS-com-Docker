@@ -107,21 +107,108 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
        * Grupos de segurança: `wordpress-ec2-sg`
      * User data:
      ```bash
-     #!/bin/bash
-      yum update -y
-      sudo dnf install -y docker
-      service docker start
-      usermod -a -G docker ec2-user
-      chkconfig docker on
-      curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
-      chmod +x /usr/local/bin/docker-compose
-      ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-      yum install -y nfs-utils
-      mkdir -p /mnt/efs
-      # Montagem do EFS
-      mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs
-      # Adicionar EFS ao fstab para montagem persistente
-      echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+     #!/bin/bash -ex 
+
+      #Update system packages 
+      
+      sudo yum update -y 
+      
+      #Install Docker (using dnf for Amazon Linux 2023) 
+      
+      sudo dnf install -y docker 
+      
+      #Start and enable Docker service 
+      
+      sudo systemctl start docker sudo systemctl enable docker 
+      
+      #Add ec2-user to docker group to run docker commands without sudo 
+      
+      sudo usermod -aG docker ec2-user 
+      
+      #Provide immediate permission to docker socket without requiring reboot/logout 
+      
+      sudo chmod 666 /var/run/docker.sock 
+      
+      #Download and install docker-compose 
+      
+      sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose sudo chmod +x /usr/local/bin/docker-compose 
+      
+      #Create symlink for easier access (optional but good practice) 
+      
+      sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
+      
+      #Install Git (required for cloning your repository, if you decide to use one later) 
+      
+      sudo yum install -y git 
+      
+      #Install NFS utilities (required for EFS) 
+      
+      sudo yum install -y nfs-utils 
+      
+      #Define EFS variables 
+      
+      EFS_DNS_NAME="fs-000c4295916d16417.efs.us-east-1.amazonaws.com" # SEU DNS DO EFS EFS_MOUNT_POINT="/mnt/efs" REPO_DIR="/home/ec2-user/wordpress-app" # Alterado para /wordpress-app para consistência 
+      
+      #Create EFS mount point if it doesn't exist 
+      
+      sudo mkdir -p ${EFS_MOUNT_POINT} 
+      
+      #Mount EFS (attempt multiple times if it fails initially) 
+      
+      echo "Attempting to mount EFS..." for i in 1 2 3 4 5; do sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} && break echo "EFS mount failed, retrying in 5 seconds... ($i/5)" sleep 5 done 
+      
+      #Add EFS to fstab for persistent mounting (only if mount was successful) 
+      
+      if grep -qs "${EFS_MOUNT_POINT}" /proc/mounts; then echo "${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" | sudo tee -a /etc/fstab echo "EFS successfully mounted and added to fstab." else echo "EFS mount failed persistently. Check EFS, Security Groups, and Subnet settings." # Exit if EFS mount failed, as WordPress won't function exit 1 fi 
+      
+      #Criar o diretório para o projeto WordPress 
+      
+      echo "Creating WordPress project directory: ${REPO_DIR}" sudo mkdir -p ${REPO_DIR} cd ${REPO_DIR} || { echo "Failed to change directory to ${REPO_DIR}"; exit 1; } 
+      
+      #Criar o arquivo docker-compose.yml 
+      
+      echo "Creating docker-compose.yml..." sudo tee docker-compose.yml > /dev/null <<EOF
+      version: '3.8' 
+      
+      services:  
+      
+         wordpress: 
+      
+       	image: wordpress:latest  
+      
+         ports: 
+      
+             - "80:80"  
+      
+         environment:  
+      
+            WORDPRESS_DB_HOST: wordpress-db.c4jm0qu26yff.us-east-1.rds.amazonaws.com:3306   
+      
+            WORDPRESS_DB_USER: adminword # SEU USUÁRIO DO DB  
+      
+            WORDPRESS_DB_PASSWORD: felipe2008A # SUA SENHA DO DB 
+      
+       	   WORDPRESS_DB_NAME: wordpress_db # SEU NOME DO DB  
+      
+         volumes:  
+      
+            - /mnt/efs/wordpress_html:/var/www/html  
+      
+         restart: always  
+      
+      EOF 
+      
+      #Ensure the /mnt/efs/wordpress_html directory exists for the volume mount 
+      
+      sudo mkdir -p /mnt/efs/wordpress_html sudo chown -R ec2-user:ec2-user /mnt/efs/wordpress_html # Ajustar permissões 
+      
+      #Run docker-compose 
+      
+      echo "Running docker-compose up -d..." sudo /usr/local/bin/docker-compose up -d 
+      
+      echo "User Data script finished. Checking Docker and WordPress status..." sudo docker ps -a >> /var/log/cloud-init-output.log 2>&1 sudo docker logs wordpress >> /var/log/cloud-init-output.log 2>&1 
+      
+      echo "Final check: Health check should be successful soon if WordPress is running." 
      ```
 ### 3.8. Conectar via SSH à Instância EC2
 1.   Conecte-se via SSH no  terminal Ubuntu (WSL):
@@ -146,38 +233,8 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
      ```bash
      df -h | grep /mnt/efs
      ```
-2. Criar o arquivo docker-compose.yml para o WordPress:
-     Crie um diretório para o projeto WordPress no diretório ec2-user:
-     ```bash
-     mkdir ~/wordpress-app
-     cd ~/wordpress-app
-     ```
-     * Criar o arquivo docker-compose.yml:
-     ```bash
-     vi docker-compose.yml
-     ```
-     ```
-     version: '3.8' 
- 
-     services: 
-        wordpress: 
-          image: wordpress:latest 
-          ports: 
-            - "80:80" 
-          environment: 
-            WORDPRESS_DB_HOST: wordpress-db.c4jm0qu26yff.us-east-1.rds.amazonaws.com > 
-            WORDPRESS_DB_USER: adminword 
-            WORDPRESS_DB_PASSWORD: fel... 
-            WORDPRESS_DB_NAME: wordpress_db 
-          volumes: 
-            - /mnt/efs:/var/www/html 
-
-          restart: always
-    ```
-    * Execute o Docker Compose:
-    ```
-    sudo docker-compose up –d
-    ```
+2. Incorporei o conteúdo do seu docker-compose.yml diretamente no userdata do seu "Modelo de Execução".
+    
 ### 3.9. Configuração do Load Balancer (ALB)
 
 1. **Criação do Grupo de Destino (Target Group):**
@@ -210,21 +267,108 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * **User Data**: Script para instalar Docker, montar EFS, configurar e rodar o WordPress em contêineres.
     **Conteúdo do script:**
    ```bash
-   #!/bin/bash 
-   yum update -y 
-   sudo dnf install -y docker 
-   service docker start 
-   usermod -a -G docker ec2-user 
-   chkconfig docker on 
-   curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose 
-   chmod +x /usr/local/bin/docker-compose 
-   ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
-   yum install -y nfs-utils 
-   mkdir -p /mnt/efs 
-   # Montagem do EFS 
-   mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs 
-   # Adicionar EFS ao fstab para montagem persistente 
-   echo "fs-0ef3eabf0aaf4b062.efs.us-east-1.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+   #!/bin/bash -ex 
+
+      #Update system packages 
+      
+      sudo yum update -y 
+      
+      #Install Docker (using dnf for Amazon Linux 2023) 
+      
+      sudo dnf install -y docker 
+      
+      #Start and enable Docker service 
+      
+      sudo systemctl start docker sudo systemctl enable docker 
+      
+      #Add ec2-user to docker group to run docker commands without sudo 
+      
+      sudo usermod -aG docker ec2-user 
+      
+      #Provide immediate permission to docker socket without requiring reboot/logout 
+      
+      sudo chmod 666 /var/run/docker.sock 
+      
+      #Download and install docker-compose 
+      
+      sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose sudo chmod +x /usr/local/bin/docker-compose 
+      
+      #Create symlink for easier access (optional but good practice) 
+      
+      sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
+      
+      #Install Git (required for cloning your repository, if you decide to use one later) 
+      
+      sudo yum install -y git 
+      
+      #Install NFS utilities (required for EFS) 
+      
+      sudo yum install -y nfs-utils 
+      
+      #Define EFS variables 
+      
+      EFS_DNS_NAME="fs-000c4295916d16417.efs.us-east-1.amazonaws.com" # SEU DNS DO EFS EFS_MOUNT_POINT="/mnt/efs" REPO_DIR="/home/ec2-user/wordpress-app" # Alterado para /wordpress-app para consistência 
+      
+      #Create EFS mount point if it doesn't exist 
+      
+      sudo mkdir -p ${EFS_MOUNT_POINT} 
+      
+      #Mount EFS (attempt multiple times if it fails initially) 
+      
+      echo "Attempting to mount EFS..." for i in 1 2 3 4 5; do sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} && break echo "EFS mount failed, retrying in 5 seconds... ($i/5)" sleep 5 done 
+      
+      #Add EFS to fstab for persistent mounting (only if mount was successful) 
+      
+      if grep -qs "${EFS_MOUNT_POINT}" /proc/mounts; then echo "${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" | sudo tee -a /etc/fstab echo "EFS successfully mounted and added to fstab." else echo "EFS mount failed persistently. Check EFS, Security Groups, and Subnet settings." # Exit if EFS mount failed, as WordPress won't function exit 1 fi 
+      
+      #Criar o diretório para o projeto WordPress 
+      
+      echo "Creating WordPress project directory: ${REPO_DIR}" sudo mkdir -p ${REPO_DIR} cd ${REPO_DIR} || { echo "Failed to change directory to ${REPO_DIR}"; exit 1; } 
+      
+      #Criar o arquivo docker-compose.yml 
+      
+      echo "Creating docker-compose.yml..." sudo tee docker-compose.yml > /dev/null <<EOF
+      version: '3.8' 
+      
+      services:  
+      
+         wordpress: 
+      
+       	image: wordpress:latest  
+      
+         ports: 
+      
+             - "80:80"  
+      
+         environment:  
+      
+            WORDPRESS_DB_HOST: wordpress-db.c4jm0qu26yff.us-east-1.rds.amazonaws.com:3306   
+      
+            WORDPRESS_DB_USER: adminword # SEU USUÁRIO DO DB  
+      
+            WORDPRESS_DB_PASSWORD: felipe2008A # SUA SENHA DO DB 
+      
+       	   WORDPRESS_DB_NAME: wordpress_db # SEU NOME DO DB  
+      
+         volumes:  
+      
+            - /mnt/efs/wordpress_html:/var/www/html  
+      
+         restart: always  
+      
+      EOF 
+      
+      #Ensure the /mnt/efs/wordpress_html directory exists for the volume mount 
+      
+      sudo mkdir -p /mnt/efs/wordpress_html sudo chown -R ec2-user:ec2-user /mnt/efs/wordpress_html # Ajustar permissões 
+      
+      #Run docker-compose 
+      
+      echo "Running docker-compose up -d..." sudo /usr/local/bin/docker-compose up -d 
+      
+      echo "User Data script finished. Checking Docker and WordPress status..." sudo docker ps -a >> /var/log/cloud-init-output.log 2>&1 sudo docker logs wordpress >> /var/log/cloud-init-output.log 2>&1 
+      
+      echo "Final check: Health check should be successful soon if WordPress is running." 
    ```
       
     
@@ -252,8 +396,9 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
         * `Project`: `PB - AB...`
           
 ### 3.12. Testar o Acesso ao WordPress via Load Balancer
-   * Com DNS name do seu Load Balancer (Exemplo: http://wordpress-alb-1234567890.us-east-1.elb.amazonaws.com).
+   * Com DNS name do seu Load Balancer (http://wordpress-alb-498015826.us-east-1.elb.amazonaws.com).
    * digite na barra do novegador.
+   * 
 
 ## 4. Limpeza de Recursos (Teardown)
 
