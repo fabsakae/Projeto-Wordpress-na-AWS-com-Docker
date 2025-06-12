@@ -233,7 +233,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
      ```bash
      df -h | grep /mnt/efs
      ```
-2. Incorporei o conteúdo do seu docker-compose.yml diretamente no userdata do seu "Modelo de Execução".
+2. Incorporei o conteúdo do docker-compose.yml diretamente no userdata para automatizar a configuração da instância EC2de forma escalável e persistente.
     
 ### 3.9. Configuração do Load Balancer (ALB)
 
@@ -398,7 +398,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
 ### 3.12. Testar o Acesso ao WordPress via Load Balancer
    * Com DNS name do seu Load Balancer (http://wordpress-alb-498015826.us-east-1.elb.amazonaws.com).
    * digite na barra do novegador.
-   * 
+     
 
 ## 4. Limpeza de Recursos (Teardown)
 
