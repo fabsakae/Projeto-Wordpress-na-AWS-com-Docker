@@ -107,108 +107,108 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
        * Grupos de segurança: `wordpress-ec2-sg`
      * User data:
      ```bash
-    #!/bin/bash -ex
-
-# Atualizar pacotes do sistema
-sudo yum update -y
-
-# Instalar o Docker (usando dnf para Amazon Linux 2023)
-sudo dnf install -y docker
-
-# Iniciar e habilitar o serviço Docker
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Adicione o usuário ec2 ao grupo docker para executar comandos docker sem sudo
-sudo usermod -aG docker ec2-user
-
-# Forneça permissão imediata para o soquete do docker sem exigir reinicialização/logout
-sudo chmod 666 /var/run/docker.sock
-
-# Instalar docker-compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-
-# Instale o Git
-sudo yum install -y git
-
-#Instalar utilitários NFS (necessários para EFS)
-sudo yum install -y nfs-utils
-
-# Define variaveis EFS
-EFS_DNS_NAME="fs-000c4295916d16417.efs.us-east-1.amazonaws.com" # SEU DNS DO EFS
-EFS_MOUNT_POINT="/mnt/efs"
-REPO_DIR="/home/ec2-user/wordpress-app"
-
-# Crie um ponto de montagem EFS se ele não existir
-sudo mkdir -p ${EFS_MOUNT_POINT}
-
-# Monte o EFS (tente várias vezes se falhar inicialmente)
-echo "Attempting to mount EFS..."
-for i in 1 2 3 4 5; do
-    sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} && break
-    echo "EFS mount failed, retrying in 5 seconds... ($i/5)"
-    sleep 5
-done
-
-# Adicione EFS ao fstab para montagem persistente (somente se a montagem for bem-sucedida)
-if grep -qs "${EFS_MOUNT_POINT}" /proc/mounts; then
-    echo "${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" | sudo tee -a /etc/fstab
-    echo "EFS successfully mounted and added to fstab."
-else
-    echo "EFS mount failed persistently. Check EFS, Security Groups, and Subnet settings."
-    exit 1
-fi
-
-# Criar o diretório para o projeto WordPress
-echo "Creating WordPress project directory: ${REPO_DIR}"
-sudo mkdir -p ${REPO_DIR}
-cd ${REPO_DIR} || { echo "Failed to change directory to ${REPO_DIR}"; exit 1; }
-
-# Criar o arquivo docker-compose.yml
-echo "Creating docker-compose.yml..."
-sudo tee docker-compose.yml > /dev/null <<EOF
-version: '3.8'
-services:
-  wordpress:
-    image: wordpress:latest
-    ports:
-      - "80:80"
-    environment:
-      WORDPRESS_DB_HOST: wordpress-db....:3306 # SEU ENDPOINT DO RDS
-      WORDPRESS_DB_USER: ad... # SEU USUÁRIO DO DB
-      WORDPRESS_DB_PASSWORD: fe.. # SUA SENHA DO DB
-      WORDPRESS_DB_NAME: wordpress_db # SEU NOME DO DB
-    volumes:
-      - /mnt/efs/wordpress_html:/var/www/html
-    restart: always
-EOF
-
-# Certifique-se de que o diretório /mnt/efs/wordpress_html exista para a montagem do volume
-sudo mkdir -p /mnt/efs/wordpress_html
-
-# --- INÍCIO DAS CORREÇÕES DE PERMISSÃO RECOMENDADAS PARA DEFINIR PERMISSÕES PARA O GRUPO www-data---
-# Definir proprietário e grupo do diretório WordPress no EFS para o usuário e grupo padrão do Apache no contêiner (www-data)
-# UID e GID 33 geralmente correspondem a www-data em imagens Debian/Ubuntu, que a imagem oficial do WordPress usa.
-sudo groupadd -g 33 www-data || true
-sudo usermod -aG www-data ec2-user || true # Adicionar ec2-user ao grupo www-data se necessário
-
-sudo chown -R 33:33 /mnt/efs/wordpress_html
-sudo chmod -R g+w /mnt/efs/wordpress_html # Conceder permissão de escrita ao grupo
-sudo chmod g+s /mnt/efs/wordpress_html # Definir SUID para que novos arquivos herdem o grupo
-# --- FIM DAS CORREÇÕES DE PERMISSÃO RECOMENDADAS ---
-
-# Execute docker-compose
-echo "Running docker-compose up -d..."
-sudo /usr/local/bin/docker-compose up -d
-
-echo "User Data script finished. Checking Docker and WordPress status..."
-sudo docker ps -a >> /var/log/cloud-init-output.log 2>&1
-# Alterado para o nome correto do contêiner para logs
-sudo docker logs wordpress-app-wordpress-1 >> /var/log/cloud-init-output.log 2>&1
-
-echo "Final check: Health check should be successful soon if WordPress is running."
+      #!/bin/bash -ex
+   
+      # Atualizar pacotes do sistema
+      sudo yum update -y
+      
+      # Instalar o Docker (usando dnf para Amazon Linux 2023)
+      sudo dnf install -y docker
+      
+      # Iniciar e habilitar o serviço Docker
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      
+      # Adicione o usuário ec2 ao grupo docker para executar comandos docker sem sudo
+      sudo usermod -aG docker ec2-user
+      
+      # Forneça permissão imediata para o soquete do docker sem exigir reinicialização/logout
+      sudo chmod 666 /var/run/docker.sock
+      
+      # Instalar docker-compose
+      sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      sudo chmod +x /usr/local/bin/docker-compose
+      sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      
+      # Instale o Git
+      sudo yum install -y git
+      
+      #Instalar utilitários NFS (necessários para EFS)
+      sudo yum install -y nfs-utils
+      
+      # Define variaveis EFS
+      EFS_DNS_NAME="fs-000c4295916d16417.efs.us-east-1.amazonaws.com" # SEU DNS DO EFS
+      EFS_MOUNT_POINT="/mnt/efs"
+      REPO_DIR="/home/ec2-user/wordpress-app"
+      
+      # Crie um ponto de montagem EFS se ele não existir
+      sudo mkdir -p ${EFS_MOUNT_POINT}
+      
+      # Monte o EFS (tente várias vezes se falhar inicialmente)
+      echo "Attempting to mount EFS..."
+      for i in 1 2 3 4 5; do
+          sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} && break
+          echo "EFS mount failed, retrying in 5 seconds... ($i/5)"
+          sleep 5
+      done
+      
+      # Adicione EFS ao fstab para montagem persistente (somente se a montagem for bem-sucedida)
+      if grep -qs "${EFS_MOUNT_POINT}" /proc/mounts; then
+          echo "${EFS_DNS_NAME}:/ ${EFS_MOUNT_POINT} nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" | sudo tee -a /etc/fstab
+          echo "EFS successfully mounted and added to fstab."
+      else
+          echo "EFS mount failed persistently. Check EFS, Security Groups, and Subnet settings."
+          exit 1
+      fi
+      
+      # Criar o diretório para o projeto WordPress
+      echo "Creating WordPress project directory: ${REPO_DIR}"
+      sudo mkdir -p ${REPO_DIR}
+      cd ${REPO_DIR} || { echo "Failed to change directory to ${REPO_DIR}"; exit 1; }
+      
+      # Criar o arquivo docker-compose.yml
+      echo "Creating docker-compose.yml..."
+      sudo tee docker-compose.yml > /dev/null <<EOF
+      version: '3.8'
+      services:
+        wordpress:
+          image: wordpress:latest
+          ports:
+            - "80:80"
+          environment:
+            WORDPRESS_DB_HOST: wordpress-db....:3306 # SEU ENDPOINT DO RDS
+            WORDPRESS_DB_USER: ad... # SEU USUÁRIO DO DB
+            WORDPRESS_DB_PASSWORD: fe.. # SUA SENHA DO DB
+            WORDPRESS_DB_NAME: wordpress_db # SEU NOME DO DB
+          volumes:
+            - /mnt/efs/wordpress_html:/var/www/html
+          restart: always
+      EOF
+      
+      # Certifique-se de que o diretório /mnt/efs/wordpress_html exista para a montagem do volume
+      sudo mkdir -p /mnt/efs/wordpress_html
+      
+      # --- INÍCIO DAS CORREÇÕES DE PERMISSÃO RECOMENDADAS PARA DEFINIR PERMISSÕES PARA O GRUPO www-data---
+      # Definir proprietário e grupo do diretório WordPress no EFS para o usuário e grupo padrão do Apache no contêiner (www-data)
+      # UID e GID 33 geralmente correspondem a www-data em imagens Debian/Ubuntu, que a imagem oficial do WordPress usa.
+      sudo groupadd -g 33 www-data || true
+      sudo usermod -aG www-data ec2-user || true # Adicionar ec2-user ao grupo www-data se necessário
+      
+      sudo chown -R 33:33 /mnt/efs/wordpress_html
+      sudo chmod -R g+w /mnt/efs/wordpress_html # Conceder permissão de escrita ao grupo
+      sudo chmod g+s /mnt/efs/wordpress_html # Definir SUID para que novos arquivos herdem o grupo
+      # --- FIM DAS CORREÇÕES DE PERMISSÃO RECOMENDADAS ---
+      
+      # Execute docker-compose
+      echo "Running docker-compose up -d..."
+      sudo /usr/local/bin/docker-compose up -d
+      
+      echo "User Data script finished. Checking Docker and WordPress status..."
+      sudo docker ps -a >> /var/log/cloud-init-output.log 2>&1
+      # Alterado para o nome correto do contêiner para logs
+      sudo docker logs wordpress-app-wordpress-1 >> /var/log/cloud-init-output.log 2>&1
+      
+      echo "Final check: Health check should be successful soon if WordPress is running."
      ```
 ### 3.8. Conectar via SSH à Instância EC2
 1.   Conecte-se via SSH no  terminal Ubuntu (WSL):
