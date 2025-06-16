@@ -39,7 +39,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * **Tabela de Rotas Privada:** Associada às sub-redes privadas.
 6.  **Rotas nos Private Subnets:** Adicionar uma rota padrão (`0.0.0.0/0`).
 
-### 3.2. Criar grupo de sub-redes do DB" (Create DB subnet group). 
+### 3.2. Criar grupo de sub-redes do DB". 
 
 **Detalhes do grupo de sub-redes do DB:**  
 
@@ -51,7 +51,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
          * Zona de disponibilidade: `us-east-1b`. 
          * Sub-redes: Selecione a sub-rede privada `projeto-wordpress-private-subnet-use1b`.
 
-### 3.3. Configuração de Segurança (Security Groups)
+### 3.3. Configuração de Segurança
 
 1.  **`wordpress-ec2-sg` (para instâncias EC2):**
     * Inbound:
@@ -67,7 +67,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * Inbound: HTTP (Porta 80) e HTTPS (Porta 443) de `0.0.0.0/0` (acesso público).
     * Outbound: HTTP (Porta 80) e HTTPS (Porta 443) para o `wordpress-ec2-sg`.
 
-### 3.4. Criar o key Pair (para acessar as instâncias EC2 via SSH).
+### 3.4. Criar o key Pair (para acessar as instâncias EC2 via SSH para manual).
 
 1.  **`wordpress-key-pair` .
 2.  * Tipo: RSA.
@@ -92,7 +92,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
     * VPC: `projeto-wordpress-vpc`.
     * Configurar pontos de acesso para as sub-redes públicas, com o `wordpress-efs-sg` anexado.
 
-### 3.7. Configuração de uma instância usando um script User (EC2)
+### 3.7. Configuração de uma instância usando um script User Data automatizada (EC2)
 1.   **Criação da instância EC2:**
      * Nome: `wordpress-instance-01`.
      * Tags obrigatórias:*
@@ -289,7 +289,7 @@ A seguir, detalho os passos para a criação dos recursos na AWS.
         * `Project`: `PB - AB...`
           
 ### 3.12. Testar o Acesso ao WordPress via Load Balancer
-   * Com DNS name do seu Load Balancer (http://wordpress-alb-498015826.us-east-1.elb.amazonaws.com).
+   * Com DNS name do seu Load Balancer (http://wordpr....elb.amazonaws.com).
    * digite na barra do novegador.
      
 
